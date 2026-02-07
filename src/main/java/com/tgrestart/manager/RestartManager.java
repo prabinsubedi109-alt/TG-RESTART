@@ -18,11 +18,15 @@ public class RestartManager {
     private int remainingSeconds;
     private boolean restartScheduled;
     private final Set<Integer> broadcastedIntervals;
+    private final Set<Integer> shownTitleIntervals;
+    private final Set<Integer> shownActionBarIntervals;
 
     public RestartManager(TGRestart plugin) {
         this.plugin = plugin;
         this.restartScheduled = false;
         this.broadcastedIntervals = new HashSet<>();
+        this.shownTitleIntervals = new HashSet<>();
+        this.shownActionBarIntervals = new HashSet<>();
     }
 
     /**
@@ -38,6 +42,8 @@ public class RestartManager {
         this.remainingSeconds = seconds;
         this.restartScheduled = true;
         this.broadcastedIntervals.clear();
+        this.shownTitleIntervals.clear();
+        this.shownActionBarIntervals.clear();
 
         plugin.debug("Scheduling restart in " + seconds + " seconds");
 
@@ -57,11 +63,11 @@ public class RestartManager {
             // Send countdown displays
             String timeString = formatTime(remainingSeconds);
 
-            // Send title
-            plugin.getMessageManager().sendCountdownTitle(timeString);
+            // Send title only at configured intervals
+            sendTitleIfNeeded(remainingSeconds, timeString);
 
-            // Send action bar
-            plugin.getMessageManager().sendActionBar(timeString);
+            // Send action bar only at configured intervals
+            sendActionBarIfNeeded(remainingSeconds, timeString);
 
             // Check if we should send a broadcast message
             sendBroadcastIfNeeded(remainingSeconds);
@@ -89,6 +95,8 @@ public class RestartManager {
 
         restartScheduled = false;
         broadcastedIntervals.clear();
+        shownTitleIntervals.clear();
+        shownActionBarIntervals.clear();
 
         // Send cancel message
         plugin.getMessageManager().broadcast(
@@ -122,6 +130,34 @@ public class RestartManager {
             broadcastedIntervals.add(seconds);
             plugin.getMessageManager().broadcastWarning(formatTime(seconds));
             plugin.debug("Sent broadcast for " + seconds + " seconds remaining");
+        }
+    }
+
+    /**
+     * Send title if at a configured interval
+     * @param seconds Current remaining seconds
+     * @param timeString Formatted time string
+     */
+    private void sendTitleIfNeeded(int seconds, String timeString) {
+        List<Integer> intervals = plugin.getConfig().getIntegerList("title-intervals");
+        if (intervals.contains(seconds) && !shownTitleIntervals.contains(seconds)) {
+            shownTitleIntervals.add(seconds);
+            plugin.getMessageManager().sendCountdownTitle(timeString);
+            plugin.debug("Sent title for " + seconds + " seconds remaining");
+        }
+    }
+
+    /**
+     * Send action bar if at a configured interval
+     * @param seconds Current remaining seconds
+     * @param timeString Formatted time string
+     */
+    private void sendActionBarIfNeeded(int seconds, String timeString) {
+        List<Integer> intervals = plugin.getConfig().getIntegerList("action-bar-intervals");
+        if (intervals.contains(seconds) && !shownActionBarIntervals.contains(seconds)) {
+            shownActionBarIntervals.add(seconds);
+            plugin.getMessageManager().sendActionBar(timeString);
+            plugin.debug("Sent action bar for " + seconds + " seconds remaining");
         }
     }
 
